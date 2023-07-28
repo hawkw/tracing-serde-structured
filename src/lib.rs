@@ -263,7 +263,7 @@ impl<'a> Hash for CowString<'a> {
 impl<'a> hash32::Hash for CowString<'a> {
     fn hash<H>(&self, state: &mut H)
     where
-        H: hash32::Hasher
+        H: hash32::Hasher,
     {
         <str as hash32::Hash>::hash(self.as_str(), state)
     }
@@ -481,7 +481,6 @@ pub enum SerializeRecordFields<'a> {
     De(RecordMap<'a>),
 }
 
-
 impl<'a> From<RecordMap<'a>> for SerializeRecordFields<'a> {
     fn from(other: RecordMap<'a>) -> Self {
         Self::De(other)
@@ -506,7 +505,6 @@ impl<'a> Serialize for SerializeRecordFields<'a> {
         }
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 #[serde(from = "RecordMap<'a>")]
@@ -550,7 +548,7 @@ impl<'a> SerializeSpanFields<'a> {
     pub fn to_owned(&self) -> SerializeSpanFields<'static> {
         match self {
             SerializeSpanFields::Ser(e) => {
-                let mut hv = HashVisit(std::collections::HashMap::new());
+                let mut hv = HashVisit(std::collections::BTreeMap::new());
                 e.record(&mut hv);
                 SerializeSpanFields::De(hv.0)
             }
@@ -868,7 +866,7 @@ impl<'a> AsSerde<'a> for tracing_core::span::Attributes<'a> {
             metadata: self.metadata().as_serde(),
             parent: self.parent().map(|p| p.as_serde()),
             is_root: self.is_root(),
-            fields: SerializeSpanFields::Ser(self.values())
+            fields: SerializeSpanFields::Ser(self.values()),
         }
     }
 }
@@ -884,8 +882,7 @@ impl<'a> SerializeAttributes<'a> {
             metadata: self.metadata.to_owned(),
             parent: self.parent.clone(),
             is_root: self.is_root,
-            fields: self.fields.to_owned()
-
+            fields: self.fields.to_owned(),
         }
     }
 }
@@ -927,12 +924,12 @@ impl<'a> SerializeRecord<'a> {
                 let mut hv = HashVisit(std::collections::BTreeMap::new());
                 s.record(&mut hv);
                 SerializeRecord::De(hv.0)
-            },
-            SerializeRecord::De(d) => {
-                SerializeRecord::De(
-                    d.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect()
-                )
-            },
+            }
+            SerializeRecord::De(d) => SerializeRecord::De(
+                d.iter()
+                    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                    .collect(),
+            ),
         }
     }
 }
